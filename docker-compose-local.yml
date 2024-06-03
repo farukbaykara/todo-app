@@ -1,0 +1,40 @@
+version: '2'
+
+services:
+  db:
+    image: 'mysql:8.0'
+    hostname: mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: taskdb
+      MYSQL_ROOT_PASSWORD: secret
+    volumes:
+      - db:/var/lib/mysql
+    ports:
+      #map port 3306 of the container to the port 3307 of the host (to test and check with dbeaver or mysql client (optional))
+      - '3308:3306'
+    expose:
+      # Opens port 3306 on the container
+      - '3306'
+  todo-app:
+    build:
+      context: .
+      dockerfile: ./backend/todo-app/Dockerfile
+      args:
+        - VERSION=${VERSION}
+    image: "todo-app:${VERSION}"
+    ports:
+      - '8080:8080'
+    depends_on:
+      - db
+    environment:
+      SPRING_PROFILE: local
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/taskdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: secret
+    volumes:
+      - .m2:/root/.m2
+    stdin_open: true
+    tty: true
+volumes:
+  db:
