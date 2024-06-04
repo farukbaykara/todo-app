@@ -43,7 +43,7 @@ jobs:
       - name: Delete old Docker Container
         run: docker rm -f todo-app || true
       - name: Run Docker Container
-        run: docker run -d -p 8080:8080 --name todo-app -e SPRING_PROFILE=test ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:latest
+        run: docker run -d -p 8080:8080 --name todo-app -e SPRING_PROFILE=test ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:latest --spring.profiles.active=test
 
 
 
