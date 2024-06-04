@@ -46,7 +46,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [aws-ec2]
+    runs-on: [todo-be-dev-runner]
     steps:
       - name: Pull Image from DockerHub
         run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:${{ needs.build.outputs.VERSION }}
