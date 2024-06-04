@@ -25,35 +25,25 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
-
       - name: Install semver package
         run: pip install semver
-
-      - name: Determine next version
-        id: vars
-        run: |
-          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
-          echo "Latest tag: $latest_tag"
-          new_version=$(python -c "import semver; print(semver.bump_patch('$latest_tag'))")
-          echo ::set-output name=VERSION::$new_version
-
       - name: Login to DockerHub
         run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
       - name: Build Docker Image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:${{ steps.vars.outputs.VERSION }} .
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:latest .
       - name: Push Docker Image
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:${{ steps.vars.outputs.VERSION }}
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:latest
 
   deploy:
     needs: build
     runs-on: [todo-be-dev-runner]
     steps:
       - name: Pull Image from DockerHub
-        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:${{ needs.build.outputs.VERSION }}
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:latest
       - name: Delete old Docker Container
         run: docker rm -f todo-app || true
       - name: Run Docker Container
-        run: docker run -d -p 8080:8080 --name todo-app -e SPRING_PROFILE=test ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:${{ needs.build.outputs.VERSION }}
+        run: docker run -d -p 8080:8080 --name todo-app -e SPRING_PROFILE=test ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:latest
 
 
 
