@@ -1,55 +1,67 @@
-package com.project.todo.security.service;
+package com.example.jwttoken.service;
 
-import com.project.todo.security.dto.LoginUserDto;
-import com.project.todo.security.dto.RegisterUserDto;
-import com.project.todo.security.entity.User;
-import com.project.todo.security.repository.UserRepository;
+import com.example.jwttoken.request.AuthRequest;
+import com.example.jwttoken.model.Token;
+import com.example.jwttoken.model.User;
+import com.example.jwttoken.repository.TokenRepository;
+import com.example.jwttoken.response.LoginResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class AuthenticationService {
-    private final UserRepository userRepository;
-
-    private final PasswordEncoder passwordEncoder;
 
     private final AuthenticationManager authenticationManager;
+    private final UserService userService;
+    private final JwtService jwtService;
+    private final TokenRepository tokenRepository;
 
-    public AuthenticationService(
-            UserRepository userRepository,
-            AuthenticationManager authenticationManager,
-            PasswordEncoder passwordEncoder
-    ) {
+    public AuthenticationService(AuthenticationManager authenticationManager, UserService userService, JwtService jwtService, TokenRepository tokenRepository) {
         this.authenticationManager = authenticationManager;
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
+        this.userService = userService;
+        this.jwtService = jwtService;
+        this.tokenRepository = tokenRepository;
     }
 
-    public User signup(RegisterUserDto input) {
-        User user = new User();
-
-        if(userRepository.findByEmail(input.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already exists");
+    public LoginResponse login(AuthRequest authRequest) {
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
+        if (authentication.isAuthenticated()) {
+            var user = userService.getByUsername(authRequest.getUsername()).orElseThrow();
+            var stringToken = jwtService.generateToken(authRequest.getUsername());
+            allTokenExpired(user);
+            saveToken(user, stringToken);
+            user.setToken(stringToken);
+            return LoginResponse.builder().user(user).build();
         }
-
-        user.setEmail(input.getEmail());
-        user.setPassword(passwordEncoder.encode(input.getPassword()));
-        user.setFullName(input.getFullName());
-
-        return userRepository.save(user);
+        log.info("Invalid username {} " + authRequest.getUsername());
+        throw new UsernameNotFoundException("invalid username {}" + authRequest.getUsername());
     }
 
-    public User authenticate(LoginUserDto input) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        input.getEmail(),
-                        input.getPassword()
-                )
-        );
+    public void saveToken(User user, String stringToken) {
+        Token token = Token.builder()
+                .user_token(stringToken)
+                .user(user)
+                .revoked(false)
+                .expired(false)
+                .build();
+        tokenRepository.save(token);
+    }
 
-        return userRepository.findByEmail(input.getEmail())
-                .orElseThrow();
+    public void allTokenExpired(User user) {
+        log.info("Expire Tokens username : {}" + user.getUsername());
+        var validUsersToken = tokenRepository.findAllValidTokensByUser(user.getId());
+        if (validUsersToken.isEmpty()) {
+            return;
+        }
+        validUsersToken.forEach(t -> {
+            t.setExpired(true);
+            t.setRevoked(true);
+        });
+        tokenRepository.saveAll(validUsersToken);
     }
 }

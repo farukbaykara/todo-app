@@ -1,11 +1,13 @@
-package com.project.todo.security.repository;
-import com.project.todo.security.entity.User;
-import org.springframework.data.repository.CrudRepository;
-import org.springframework.stereotype.Repository;
+package com.example.jwttoken.repository;
+
+import com.example.jwttoken.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-@Repository
-public interface UserRepository extends CrudRepository<User, Integer> {
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByUsername(String userName);
+
     Optional<User> findByEmail(String email);
 }

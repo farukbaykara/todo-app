@@ -16,22 +16,30 @@ services:
     expose:
       # Opens port 3306 on the container
       - '3306'
+  mongo:
+    image: 'mongodb/mongodb-community-server:latest'
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: secret
+    volumes:
+      - db:/var/lib/mongo
   todo-app:
-    build:
-      context: .
-      dockerfile: ./backend/todo-app/Dockerfile
-      args:
-        - VERSION=${VERSION}
-    image: "todo-app:${VERSION}"
+    build: .
+    container_name: app
+    image: "todo-app:latest"
     ports:
       - '8080:8080'
     depends_on:
       - db
+      - mongo
     environment:
-      SPRING_PROFILE: local
+      SPRING_PROFILES_ACTIVE: local
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/taskdb
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: secret
+      SPRING_DATA_MONGODB_URI: mongodb://root:secret@mongo:27017/taskdb?authSource=admin
     volumes:
       - .m2:/root/.m2
     stdin_open: true
